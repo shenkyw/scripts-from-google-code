@@ -1,27 +1,32 @@
 #!/usr/bin/ruby
-=begin
-Name: nicoxml2ssa.rb
-Version: Alpha1
-Purpose: 將Nico的字幕xml轉成SSA
-Usage: nicoxml2ssa.rb input.xml |iconv -tutf16 >output.ssa
-	(這隻程式會把結果輸出到stdout,xml內容為utf8,但ssa要以utf16編碼，所以再靠iconv轉成utf16)
+# Name:: nicoxml2ssa.rb
+# Version:: Alpha1.release2
+# Purpose:: 將Nico的字幕xml轉成SSA
+# Usage:: nicoxml2ssa.rb input.xml output.ssa
+#
+# :FIXME: 我用mplayer掛載這程式輸出的ssa可行，但其他方法還沒掛載成功過= =a...不知道問題在哪
+#
+# Author:: Shenk @ (PTT BBS in Taiwan)
+# Blog:: http://blog.pixnet.net/Shenk
+#
 
-Note: 我用mplayer掛載這程式輸出的ssa可行，但其他方法還沒掛載成功過= =a...不知道問題在哪
-
-Author：Shenk @ [PTT BBS in Taiwan]
-Blog：http://blog.pixnet.net/Shenk
-=end
-
+require 'optparse'
 require 'rexml/document'
+require 'iconv'
 
-Duration = 3000	#字幕花多少時間去移動(ms)
-Speed = 0.5	#字幕移動數度變數(越大越快)
+#字幕花多少時間去移動(ms)
+Duration = 3000
+#字幕移動數度變數(越大越快)
+Speed = 0.5
 
-Fontsize = {"big"=>20, "normal"=>18, "small"=>12}	#字體大小(pt?)
-Fontwide = {"big"=>16*2, "normal"=>31*2, "small"=>38*2}	#畫面寬能塞多少半形字元
-Fontheight =  {"big"=>384/7.6, "normal"=>384/11.25, "small"=>384/16.5}	#字高(pt)
+#字體大小(pt?)
+Fontsize = {"big"=>20, "normal"=>18, "small"=>12}
+#畫面寬能塞多少半形字元
+Fontwide = {"big"=>16*2, "normal"=>31*2, "small"=>38*2}
+#字高(pt)
+Fontheight =  {"big"=>384/7.6, "normal"=>384/11.25, "small"=>384/16.5}
 
-##這堆是關於SSA Styles的變數
+#====以下這堆是關於SSA Styles的常數
 Fontname="方正黑体"
 PrimaryColour="&H00FFFFFF"; SecondaryColour="&H00FFFFFF"
 OutlineColour="&H7F000000"; BackColour="&H00000000"
@@ -29,8 +34,12 @@ BorderStyle="1"; Outline="1"; Shadow="1"; MarginV="5"
 
 PlayResX = 512
 PlayResY = 384
+#====以上這堆是關於SSA Styles的常數
 
-puts <<HEADER
+#utf8轉utf16
+iconv = Iconv.new("utf16", "utf8")
+
+header = iconv.iconv <<HEADER
 [Script Info]
 Script Type: V4.00+
 ScriptType: V4.00+
@@ -50,7 +59,29 @@ Style: shita,#{Fontsize["normal"]},#{Fontname},#{PrimaryColour},#{SecondaryColou
 Format: Layer, Start, End, Style, Text
 HEADER
 
-Input = ARGV[0]
+OPTIONS = {
+	:input => "/dev/stdin",
+	:output => "/dev/stdout",
+}
+
+ARGV.options do |o|
+	script_name = File.basename($0)
+
+	o.banner = "Usage: #{script_name} [options]"
+	o.separator ""
+	o.separator "Options:"
+	o.on("-i", "--input=xml_file", String,
+	   "輸入的nico xml字幕檔")   { |OPTIONS[:input]| }
+	o.on("-o", "--output=ssa_file", String,
+	   "輸出的ssa字幕檔")      { |OPTIONS[:output]| }
+	o.separator ""
+	o.on_tail("-h", "--help", "Show this help message.") { puts o; exit }
+
+	o.parse!
+end
+
+input = OPTIONS[:input]
+output = OPTIONS[:output]
 
 class Fixnum
 	#change centisecond to time format
@@ -63,7 +94,7 @@ class Fixnum
 end
 
 class Comment
-	attr_reader :vpos, :style
+	attr_reader :vpos, :style #ue? shita?
 	attr_accessor :vlocation
 	def initialize(mail,vpos,text)
 		@text,@vpos = text.gsub(/\n/,'\\N'),vpos.to_i
@@ -96,32 +127,37 @@ class Comment
 		
 		@vlocation = Fontheight[@size]
 	end
-	
-	def reloc	#字幕出現座標回歸為最上端
+
+	#字幕出現座標回歸為最上端
+	def reloc
 		@vlocation = Fontheight[@size]
 	end
-	
-	def last_t	#此字幕影響到右邊邊框至此時間點
+
+	#此字幕影響到右邊邊框至此時間點
+	def last_t
 		text_wide = Speed*@text.length*512/Fontwide[@size]
 		vpos + (Duration/10)*text_wide/(text_wide+PlayResX)
 	end
 
-	def move #建立此字幕的移動方法
+	#建立此字幕的移動方法
+	def move
 		height = (@vlocation - Fontheight[@size]).to_i
 		(@style == "normal")? 
 		"{\\move(#{PlayResX+(Speed*@text.length*512/Fontwide[@size]).to_i},#{height},0,#{height},0,#{Duration})}":""
 	end
 
+	#轉成ssa語法
 	def to_s
 		fontsize = (@size == "normal")? "" : '{\\fs'+Fontsize[@size].to_s+'}'
 		"Dialogue: 0,#{@vpos.cs_to_s},#{(@vpos+300).cs_to_s},#@style,#{fontsize}#@color#{self.move}#@text"
 	end
 end
-
+ 
 #讀檔
 #note:似乎應該排除掉太久以前的字幕
+
 chats = Array.new
-nicoxml = REXML::Document.new(File.open(Input))
+nicoxml = REXML::Document.new(File.open(input))
 nicoxml.elements.each("packet/chat") do |chat|
 	chats.push Comment.new(chat.attributes["mail"],chat.attributes["vpos"],chat.text)
 end
@@ -151,4 +187,8 @@ chats.each_index do |i|
 	chats[i].reloc if chats[i].vlocation > PlayResY
 end
 
-chats.each{|x| puts x.to_s}
+ssa_file = File.new(output, "w")
+ssa_file << header
+
+chats.each{|x| ssa_file << iconv.iconv(x.to_s + "\n")}
+
