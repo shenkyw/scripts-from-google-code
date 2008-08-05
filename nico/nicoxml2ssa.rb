@@ -1,10 +1,12 @@
 #!/usr/bin/ruby
 # Name:: nicoxml2ssa.rb
 # Version:: Alpha1.release2
-# Purpose:: 將Nico的字幕xml轉成SSA
+# Purpose:: Transforme NICO's subtitle xml into SSA format
 # Usage:: nicoxml2ssa.rb input.xml output.ssa
 #
-# :FIXME: 我用mplayer掛載這程式輸出的ssa可行，但其他方法還沒掛載成功過= =a...不知道問題在哪
+# :FIXME: I used mplayer to load the output generated from this script.
+#         It worked. But when I try to load the same file by other
+#         program under windows, it didn't work. I don't know why.
 #
 # Author:: Shenk @ (PTT BBS in Taiwan)
 # Blog:: http://blog.pixnet.net/Shenk
