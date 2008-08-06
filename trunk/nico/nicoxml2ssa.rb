@@ -1,8 +1,8 @@
 #!/usr/bin/ruby
 # Name:: nicoxml2ssa.rb
 # Version:: Alpha1.release2
-# Purpose:: Transform NICO's subtitle xml into SSA format
-# Usage:: nicoxml2ssa.rb input.xml output.ssa
+# Purpose:: Transforme NICO's subtitle xml into SSA format
+# Usage:: nicoxml2ssa.rb -i input.xml -o output.ssa
 #
 # :FIXME: I used mplayer to load the output generated from this script.
 #         It worked. But when I try to load the same file by other
