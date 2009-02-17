@@ -1,11 +1,10 @@
 #!/bin/bash
-#Ver 0.20080719
+#Ver 0.20090217
 #Usage:
 #getnico "$URL"
 #switches:
 #	"-t"	download Taiwan's subtitles
 #	"-j"	download Japan's subtitles
-#	"-n"	rename to title name
 
 UserAgent="Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.12) Gecko/20080207 Ubuntu/7.10 (gutsy) Firefox/2.0.0.12"
 
@@ -72,10 +71,8 @@ PhaseAPI(){
 	done
 }
 
-origional_name_flag=1
 for i in $@;do
 	case $i in
-		-n)origional_name_flag=0;;
 		-t)taiwan_sub_flag=1;;
 		-j)japan_sub_flag=1;;
 		*)nico_url=$i;;
@@ -117,12 +114,7 @@ fi
 origional_name=`wget -q --no-check-certificate --load-cookies cookies.txt --keep-session-cookies --save-cookies cookies.txt -O - \
 	  --user-agent="$UserAgent" \
 	  "http://www.nicovideo.jp/watch/"$NicoID|
-	grep \<title\>|perl -pe 's;<title>(.+)‐ニコニコ動画\(.+\)</title>;$1;g'`
-
-case $origional_name_flag in
-	1)filename=$origional_name;;
-	*)filename=$NicoID;;
-esac
+	grep \<title\>|perl -pe 's;<title>(.+)‐ニコニコ動画\(.+\)</title>.*;$1;g'`
 
 Info_URL=`wget -q "http://www.nicovideo.jp/api/getflv?v="$NicoID \
 	  --load-cookies cookies.txt \
@@ -137,8 +129,9 @@ case $file_flag in
 esac
 
 if [ `echo $url | grep low` ] ;then
-	LowFlag=low
-	echo "由於NICO伺服器忙碌，現在只能載到低畫質版本的該影片"
+	LowFlag=[low]
+	#echo "由於NICO伺服器忙碌，現在只能載到低畫質版本的該影片"
+	echo "Since NICO server is busy now，you can only download low quality version of this video"
 fi
 
 if [ -f "$filename$LowFlag.$file_type" ] ; then conti_flag="-c" ;fi
@@ -146,7 +139,7 @@ if [ -f "$filename$LowFlag.$file_type" ] ; then conti_flag="-c" ;fi
 wget $url \
           --load-cookies cookies.txt \
           --user-agent="$UserAgent" $conti_flag\
-          -O "$filename$LowFlag.$file_type"
+          -O "[$NicoID]$LowFlag$origional_name.$file_type"
 
 if [ `echo $japan_sub_flag` ];then language="jap";GetSub ;fi
 if [ `echo $taiwan_sub_flag` ];then language="chi";GetSub ;fi
